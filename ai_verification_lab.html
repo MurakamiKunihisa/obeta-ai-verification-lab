@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Generation Verification Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+JP:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --accent: #1D9E75;
+    --accent-light: #E1F5EE;
+    --accent-dark: #0F6E56;
+    --blue: #378ADD;
+    --blue-light: #E6F1FB;
+    --amber: #BA7517;
+    --amber-light: #FAEEDA;
+    --purple: #534AB7;
+    --purple-light: #EEEDFE;
+    --red: #E24B4A;
+    --red-light: #FCEBEB;
+    --gray-50: #F8F7F4;
+    --gray-100: #F1EFE8;
+    --gray-200: #D3D1C7;
+    --gray-400: #888780;
+    --gray-600: #5F5E5A;
+    --gray-800: #2C2C2A;
+    --text: #1a1a18;
+    --text-secondary: #5F5E5A;
+    --text-muted: #888780;
+    --border: #E2E0D8;
+    --border-dark: #C8C6BC;
+    --surface: #ffffff;
+    --surface-2: #F8F7F4;
+    --surface-3: #F1EFE8;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+    --shadow: 0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,.10), 0 4px 8px rgba(0,0,0,.06);
+    --radius: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --font-mono: 'IBM Plex Mono', monospace;
+    --font-sans: 'IBM Plex Sans JP', sans-serif;
+  }
+
+  html { font-size: 15px; }
+  body {
+    font-family: var(--font-sans);
+    background: var(--gray-50);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* ── LAYOUT ── */
+  .app-shell { display: flex; min-height: 100vh; }
+
+  .sidebar {
+    width: 240px;
+    min-height: 100vh;
+    background: var(--gray-800);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    z-index: 100;
+  }
+
+  .sidebar-brand {
+    padding: 28px 24px 20px;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+  }
+  .brand-icon { font-size: 22px; color: var(--accent); display: block; margin-bottom: 6px; }
+  .brand-name { font-family: var(--font-mono); font-size: 13px; font-weight: 600; letter-spacing: .04em; color: #fff; line-height: 1.3; }
+  .brand-sub { font-size: 11px; color: rgba(255,255,255,.4); margin-top: 4px; font-family: var(--font-mono); }
+
+  .sidebar-nav { padding: 16px 12px; flex: 1; }
+  .nav-label { font-size: 10px; font-weight: 600; letter-spacing: .1em; color: rgba(255,255,255,.3); padding: 0 12px; margin: 0 0 8px; text-transform: uppercase; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: var(--radius);
+    cursor: pointer; font-size: 13px; font-weight: 500;
+    color: rgba(255,255,255,.6); transition: all .15s;
+    border: none; background: none; width: 100%; text-align: left;
+  }
+  .nav-item i { font-size: 17px; }
+  .nav-item:hover { background: rgba(255,255,255,.07); color: rgba(255,255,255,.9); }
+  .nav-item.active { background: rgba(29,158,117,.18); color: var(--accent); }
+  .nav-item.active i { color: var(--accent); }
+
+  .sidebar-footer {
+    padding: 16px;
+    border-top: 1px solid rgba(255,255,255,.08);
+  }
+  .conn-status {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 12px; border-radius: var(--radius);
+    background: rgba(255,255,255,.05); font-size: 11px;
+    font-family: var(--font-mono);
+  }
+  .conn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gray-400); flex-shrink: 0; }
+  .conn-dot.ok { background: var(--accent); box-shadow: 0 0 6px rgba(29,158,117,.5); }
+  .conn-dot.err { background: var(--red); }
+  .conn-dot.loading { background: var(--amber); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .conn-text { color: rgba(255,255,255,.5); line-height: 1.3; }
+  .conn-text strong { color: rgba(255,255,255,.8); display: block; font-size: 12px; }
+
+  .main {
+    margin-left: 240px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 36px;
+    height: 60px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 50;
+    box-shadow: var(--shadow-sm);
+  }
+  .topbar-title { font-size: 15px; font-weight: 600; }
+  .topbar-meta { display: flex; align-items: center; gap: 16px; }
+  .record-badge {
+    font-family: var(--font-mono); font-size: 12px;
+    background: var(--accent-light); color: var(--accent-dark);
+    padding: 4px 12px; border-radius: 20px; font-weight: 500;
+  }
+
+  .content { padding: 36px; flex: 1; }
+
+  /* ── SECTIONS ── */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  .section-header { margin-bottom: 28px; }
+  .section-title { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  .section-sub { font-size: 13px; color: var(--text-secondary); }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+  }
+  .card-body { padding: 28px 32px; }
+  .card + .card { margin-top: 16px; }
+
+  /* ── FORM ── */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .form-full { grid-column: 1 / -1; }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field-label {
+    font-size: 12px; font-weight: 600; color: var(--text-secondary);
+    letter-spacing: .04em; text-transform: uppercase;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .field-label .req { color: var(--red); font-size: 14px; line-height: 1; }
+
+  .field input, .field select, .field textarea {
+    font-family: var(--font-sans); font-size: 14px;
+    padding: 10px 14px; border: 1.5px solid var(--border);
+    border-radius: var(--radius); background: var(--surface);
+    color: var(--text); outline: none; transition: border-color .15s, box-shadow .15s;
+    width: 100%;
+  }
+  .field input:hover, .field select:hover, .field textarea:hover { border-color: var(--border-dark); }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    border-color: var(--accent); box-shadow: 0 0 0 3px rgba(29,158,117,.12);
+  }
+  .field textarea { resize: vertical; min-height: 90px; line-height: 1.6; }
+  .field select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; }
+  .field select:disabled { opacity: .5; cursor: not-allowed; }
+
+  .form-actions {
+    display: flex; align-items: center; gap: 12px;
+    padding-top: 24px; margin-top: 4px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 10px 20px; border-radius: var(--radius);
+    font-family: var(--font-sans); font-size: 14px; font-weight: 500;
+    cursor: pointer; border: 1.5px solid var(--border);
+    background: var(--surface); color: var(--text);
+    transition: all .15s; white-space: nowrap;
+  }
+  .btn:hover { background: var(--surface-2); border-color: var(--border-dark); }
+  .btn:active { transform: scale(.98); }
+  .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
+  .btn-sm { padding: 6px 13px; font-size: 12px; }
+  .btn-danger { color: var(--red); border-color: var(--border); }
+  .btn-danger:hover { background: var(--red-light); border-color: var(--red); }
+  .btn-icon { padding: 7px; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+  .spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
+  .spinner-dark { border-color: rgba(0,0,0,.1); border-top-color: var(--accent); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── FEEDBACK ── */
+  .feedback { font-size: 13px; }
+  .feedback.ok { color: var(--accent); }
+  .feedback.err { color: var(--red); }
+
+  /* ── RECORDS LIST ── */
+  .list-toolbar {
+    display: flex; gap: 12px; margin-bottom: 20px; align-items: center;
+  }
+  .search-wrap { position: relative; flex: 1; }
+  .search-wrap i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 16px; pointer-events: none; }
+  .search-wrap input { padding-left: 38px; }
+  .list-meta { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
+
+  .record-list { display: flex; flex-direction: column; gap: 12px; }
+  .record-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 20px 24px;
+    box-shadow: var(--shadow-sm); transition: box-shadow .15s, border-color .15s;
+  }
+  .record-card:hover { box-shadow: var(--shadow); border-color: var(--border-dark); }
+  .record-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; }
+  .record-id { font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--accent); letter-spacing: .06em; }
+  .record-ts { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .record-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+  }
+  .badge i { font-size: 12px; }
+  .badge-tool { background: var(--accent-light); color: var(--accent-dark); }
+  .badge-model { background: var(--blue-light); color: #185FA5; }
+  .badge-in { background: var(--amber-light); color: var(--amber); }
+  .badge-out { background: var(--purple-light); color: var(--purple); }
+  .record-prompt {
+    font-size: 13px; color: var(--text); line-height: 1.6;
+    background: var(--surface-2); border-radius: var(--radius);
+    padding: 10px 14px; margin-bottom: 10px;
+    border-left: 3px solid var(--border-dark);
+    font-family: var(--font-mono);
+  }
+  .record-footer { display: flex; align-items: center; gap: 16px; }
+  .record-time { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+  .record-time i { font-size: 14px; }
+  .record-comment {
+    font-size: 13px; color: var(--text-secondary); line-height: 1.6;
+    padding-top: 10px; margin-top: 10px; border-top: 1px solid var(--border);
+  }
+
+  /* ── EMPTY ── */
+  .empty {
+    text-align: center; padding: 60px 20px; color: var(--text-muted);
+  }
+  .empty i { font-size: 40px; display: block; margin-bottom: 12px; opacity: .4; }
+  .empty p { font-size: 14px; }
+
+  /* ── MASTER ── */
+  .master-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .master-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  .master-card-head {
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    background: var(--surface-2);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .master-card-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+  .master-card-title i { font-size: 15px; }
+  .master-card-body { padding: 16px 20px; }
+  .master-add-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .master-add-row input { flex: 1; font-family: var(--font-sans); font-size: 13px; padding: 8px 12px; border: 1.5px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); outline: none; transition: border-color .15s; }
+  .master-add-row input:focus { border-color: var(--accent); }
+  .tag-wrap { display: flex; flex-wrap: wrap; gap: 6px; min-height: 28px; }
+  .tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border: 1px solid var(--border);
+    border-radius: 20px; font-size: 12px; background: var(--surface-2);
+  }
+  .tag-x { cursor: pointer; color: var(--text-muted); font-size: 15px; line-height: 1; transition: color .1s; }
+  .tag-x:hover { color: var(--red); }
+
+  /* family hierarchy */
+  .family-list-wrap { grid-column: 1 / -1; }
+  .family-block {
+    border: 1px solid var(--border); border-radius: var(--radius-lg);
+    overflow: hidden; margin-bottom: 12px;
+  }
+  .family-head {
+    padding: 14px 20px; background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .family-head-name { font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+  .family-head-name i { color: var(--accent); font-size: 16px; }
+  .family-models { padding: 14px 20px; background: var(--surface); }
+  .model-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; min-height: 28px; }
+  .model-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border: 1px solid var(--blue-light);
+    background: var(--blue-light); border-radius: 20px; font-size: 12px; color: #185FA5; font-weight: 500;
+  }
+  .model-chip-x { cursor: pointer; opacity: .6; font-size: 15px; line-height: 1; }
+  .model-chip-x:hover { opacity: 1; color: var(--red); }
+  .model-add-row { display: flex; gap: 8px; }
+  .model-add-row input { flex: 1; font-family: var(--font-sans); font-size: 13px; padding: 7px 12px; border: 1.5px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); outline: none; }
+  .model-add-row input:focus { border-color: var(--accent); }
+  .new-family-row { display: flex; gap: 8px; margin-bottom: 16px; }
+  .new-family-row input { font-family: var(--font-sans); font-size: 13px; padding: 9px 14px; border: 1.5px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); outline: none; width: 200px; }
+  .new-family-row input:focus { border-color: var(--accent); }
+
+  /* ── DIVIDER ── */
+  .divider { height: 1px; background: var(--border); margin: 0; }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-icon">◈</span>
+      <div class="brand-name">AI Verification<br>Lab</div>
+      <div class="brand-sub">obeta-ai-verification-lab</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-label">メニュー</div>
+      <button class="nav-item active" onclick="switchTab('record',this)">
+        <i class="ti ti-plus"></i> 新規記録
+      </button>
+      <button class="nav-item" onclick="switchTab('list',this)">
+        <i class="ti ti-list-details"></i> 記録一覧
+      </button>
+      <button class="nav-item" onclick="switchTab('master',this)">
+        <i class="ti ti-database"></i> マスター管理
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="conn-status">
+        <span class="conn-dot loading" id="conn-dot"></span>
+        <div class="conn-text">
+          <strong id="conn-label">接続中...</strong>
+          Supabase
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar-title" id="page-title">新規記録</div>
+      <div class="topbar-meta">
+        <span class="record-badge" id="total-count">— 件の記録</span>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- ── 新規記録 ── -->
+      <div id="tab-record" class="section active">
+        <div class="section-header">
+          <div class="section-title">検証記録を追加</div>
+          <div class="section-sub">AI生成ツールの検証結果を記録します。※は必須項目です。</div>
+        </div>
+        <div class="card">
+          <div class="card-body">
+            <div class="form-grid">
+              <div class="field">
+                <label class="field-label">AI生成ツール <span class="req">*</span></label>
+                <select id="f-tool"><option value="">選択してください</option></select>
+              </div>
+              <div class="field">
+                <label class="field-label">入力モダリティ <span class="req">*</span></label>
+                <select id="f-input-type"><option value="">選択してください</option></select>
+              </div>
+              <div class="field">
+                <label class="field-label">モデルファミリー <span class="req">*</span></label>
+                <select id="f-family" onchange="onFamilyChange()"><option value="">選択してください</option></select>
+              </div>
+              <div class="field">
+                <label class="field-label">AIモデル名称 <span class="req">*</span></label>
+                <select id="f-model" disabled><option value="">ファミリーを先に選択</option></select>
+              </div>
+              <div class="field">
+                <label class="field-label">出力モダリティ <span class="req">*</span></label>
+                <select id="f-output-type"><option value="">選択してください</option></select>
+              </div>
+              <div class="field">
+                <label class="field-label">生成時間（秒）</label>
+                <input type="number" id="f-duration" min="0" placeholder="例：45">
+              </div>
+              <div class="field form-full">
+                <label class="field-label">プロンプト内容 <span class="req">*</span></label>
+                <textarea id="f-prompt" rows="4" placeholder="使用したプロンプトを入力してください..."></textarea>
+              </div>
+              <div class="field form-full">
+                <label class="field-label">コメント・観察メモ</label>
+                <textarea id="f-comment" rows="3" placeholder="品質評価、気づき、改善点、比較メモなど..."></textarea>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary" id="btn-save" onclick="saveRecord()">
+                <i class="ti ti-device-floppy"></i> 記録を保存
+              </button>
+              <button class="btn" onclick="clearForm()">
+                <i class="ti ti-x"></i> クリア
+              </button>
+              <span class="feedback" id="save-msg" style="display:none"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 記録一覧 ── -->
+      <div id="tab-list" class="section">
+        <div class="section-header">
+          <div class="section-title">記録一覧</div>
+          <div class="section-sub">保存された検証記録を検索・閲覧できます。</div>
+        </div>
+        <div class="list-toolbar">
+          <div class="search-wrap" style="flex:1">
+            <i class="ti ti-search"></i>
+            <input class="field input" style="font-family:var(--font-sans);font-size:14px;padding:10px 14px 10px 38px;border:1.5px solid var(--border);border-radius:var(--radius);width:100%;outline:none;" type="text" id="search-input" placeholder="プロンプト・コメント・ツール名で検索..." oninput="renderList()">
+          </div>
+          <select id="filter-tool" onchange="renderList()" style="font-family:var(--font-sans);font-size:14px;padding:10px 36px 10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text);outline:none;appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 12px center;min-width:140px">
+            <option value="">全ツール</option>
+          </select>
+          <button class="btn btn-sm" onclick="loadAll()"><i class="ti ti-refresh"></i> 更新</button>
+        </div>
+        <div class="list-meta" id="record-count"></div>
+        <div class="record-list" id="records-container"></div>
+      </div>
+
+      <!-- ── マスター管理 ── -->
+      <div id="tab-master" class="section">
+        <div class="section-header">
+          <div class="section-title">マスター管理</div>
+          <div class="section-sub">選択肢リストの追加・削除を行います。変更はすべてのユーザーに即時反映されます。</div>
+        </div>
+
+        <!-- ファミリー -->
+        <div style="margin-bottom:20px">
+          <div class="family-list-wrap">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <div style="font-size:13px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:6px"><i class="ti ti-hierarchy" style="font-size:16px"></i> モデルファミリー／名称</div>
+            </div>
+            <div class="new-family-row">
+              <input type="text" id="new-family" placeholder="新しいファミリー名（例：FLUX）">
+              <button class="btn btn-primary btn-sm" onclick="addFamily()"><i class="ti ti-plus"></i> ファミリー追加</button>
+            </div>
+            <div id="family-list"></div>
+          </div>
+        </div>
+
+        <div class="master-grid">
+          <!-- ツール -->
+          <div class="master-card">
+            <div class="master-card-head">
+              <div class="master-card-title"><i class="ti ti-tools"></i> AI生成ツール</div>
+            </div>
+            <div class="master-card-body">
+              <div class="master-add-row">
+                <input type="text" id="new-tool" placeholder="例：ComfyUI">
+                <button class="btn btn-primary btn-sm" onclick="addSimple('tools','new-tool')"><i class="ti ti-plus"></i></button>
+              </div>
+              <div class="tag-wrap" id="list-tools"></div>
+            </div>
+          </div>
+
+          <!-- 入力モダリティ -->
+          <div class="master-card">
+            <div class="master-card-head">
+              <div class="master-card-title"><i class="ti ti-arrow-bar-right"></i> 入力モダリティ</div>
+            </div>
+            <div class="master-card-body">
+              <div class="master-add-row">
+                <input type="text" id="new-input-type" placeholder="例：テキスト＋静止画">
+                <button class="btn btn-primary btn-sm" onclick="addSimple('input_types','new-input-type')"><i class="ti ti-plus"></i></button>
+              </div>
+              <div class="tag-wrap" id="list-input_types"></div>
+            </div>
+          </div>
+
+          <!-- 出力モダリティ -->
+          <div class="master-card">
+            <div class="master-card-head">
+              <div class="master-card-title"><i class="ti ti-arrow-bar-left"></i> 出力モダリティ</div>
+            </div>
+            <div class="master-card-body">
+              <div class="master-add-row">
+                <input type="text" id="new-output-type" placeholder="例：動画">
+                <button class="btn btn-primary btn-sm" onclick="addSimple('output_types','new-output-type')"><i class="ti ti-plus"></i></button>
+              </div>
+              <div class="tag-wrap" id="list-output_types"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app-shell -->
+
+<script>
+const SUPA_URL = 'https://fbahfvqhbplzgfoeznpe.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZiYWhmdnFoYnBsemdmb2V6bnBlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0ODUyNjksImV4cCI6MjA5NDA2MTI2OX0.ltb18r57UukqRm2DoAfvciyCh7AWEwEgynhNe26iA4g';
+const H = {
+  'apikey': SUPA_KEY,
+  'Authorization': 'Bearer ' + SUPA_KEY,
+  'Content-Type': 'application/json',
+  'Prefer': 'return=representation'
+};
+
+let cache = { tools:[], families:[], models:[], inputTypes:[], outputTypes:[], records:[] };
+
+async function sb(path, opts = {}) {
+  const r = await fetch(SUPA_URL + '/rest/v1/' + path, { headers: H, ...opts });
+  if (!r.ok) throw new Error(await r.text());
+  return r.status === 204 ? [] : r.json();
+}
+
+async function loadAll() {
+  setConn('loading');
+  try {
+    const [tools, families, models, inputTypes, outputTypes, records] = await Promise.all([
+      sb('tools?select=*&order=name'),
+      sb('model_families?select=*&order=name'),
+      sb('models?select=*&order=name'),
+      sb('input_types?select=*&order=name'),
+      sb('output_types?select=*&order=name'),
+      sb('verification_records?select=*,tools(name),models(name,family_id),input_types(name),output_types(name)&order=created_at.desc&limit=300')
+    ]);
+    cache = { tools, families, models, inputTypes, outputTypes, records };
+    setConn('ok');
+    document.getElementById('total-count').textContent = records.length + ' 件の記録';
+    renderAll();
+  } catch(e) {
+    setConn('err');
+    console.error(e);
+  }
+}
+
+function setConn(s) {
+  const dot = document.getElementById('conn-dot');
+  const lbl = document.getElementById('conn-label');
+  dot.className = 'conn-dot ' + s;
+  lbl.textContent = s === 'ok' ? '接続済み' : s === 'err' ? '接続エラー' : '接続中...';
+}
+
+function renderAll() {
+  fillSelect('f-tool', cache.tools, 'id', 'name');
+  fillSelect('f-family', cache.families, 'id', 'name');
+  fillSelect('f-input-type', cache.inputTypes, 'id', 'name');
+  fillSelect('f-output-type', cache.outputTypes, 'id', 'name');
+  fillSelect('filter-tool', cache.tools, 'name', 'name');
+  renderMaster();
+  renderList();
+}
+
+function fillSelect(id, items, vk, lk) {
+  const el = document.getElementById(id);
+  const cur = el.value;
+  const first = el.options[0].outerHTML;
+  el.innerHTML = first;
+  items.forEach(i => {
+    const o = document.createElement('option');
+    o.value = i[vk]; o.textContent = i[lk]; el.appendChild(o);
+  });
+  if (cur) el.value = cur;
+}
+
+function onFamilyChange() {
+  const famId = document.getElementById('f-family').value;
+  const sel = document.getElementById('f-model');
+  sel.innerHTML = '<option value="">選択してください</option>';
+  if (famId) {
+    cache.models.filter(m => m.family_id === famId).forEach(m => {
+      const o = document.createElement('option');
+      o.value = m.id; o.textContent = m.name; sel.appendChild(o);
+    });
+    sel.disabled = false;
+  } else {
+    sel.disabled = true;
+    sel.innerHTML = '<option value="">ファミリーを先に選択</option>';
+  }
+}
+
+async function saveRecord() {
+  const toolId = document.getElementById('f-tool').value;
+  const modelId = document.getElementById('f-model').value;
+  const inputTypeId = document.getElementById('f-input-type').value;
+  const outputTypeId = document.getElementById('f-output-type').value;
+  const prompt = document.getElementById('f-prompt').value.trim();
+  if (!toolId || !modelId || !inputTypeId || !outputTypeId || !prompt) {
+    showMsg('※印の必須項目をすべて入力してください', true); return;
+  }
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> 保存中...';
+  try {
+    const code = 'REC-' + Date.now().toString(36).toUpperCase();
+    await sb('verification_records', {
+      method: 'POST',
+      body: JSON.stringify({
+        record_code: code,
+        tool_id: toolId, model_id: modelId,
+        input_type_id: inputTypeId, output_type_id: outputTypeId,
+        prompt_text: prompt,
+        duration_seconds: document.getElementById('f-duration').value || null,
+        comment: document.getElementById('f-comment').value.trim() || null
+      })
+    });
+    showMsg('✓ 記録を保存しました', false);
+    clearForm();
+    await loadAll();
+  } catch(e) {
+    showMsg('エラー: ' + e.message.slice(0, 80), true);
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="ti ti-device-floppy"></i> 記録を保存';
+}
+
+function showMsg(text, isErr) {
+  const el = document.getElementById('save-msg');
+  el.textContent = text; el.className = 'feedback ' + (isErr ? 'err' : 'ok');
+  el.style.display = 'inline';
+  setTimeout(() => el.style.display = 'none', 3500);
+}
+
+function clearForm() {
+  ['f-tool','f-family','f-input-type','f-output-type'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-model').innerHTML = '<option value="">ファミリーを先に選択</option>';
+  document.getElementById('f-model').disabled = true;
+  ['f-prompt','f-comment','f-duration'].forEach(id => document.getElementById(id).value = '');
+}
+
+function renderList() {
+  const q = (document.getElementById('search-input').value || '').toLowerCase();
+  const ft = document.getElementById('filter-tool').value;
+  const famMap = {};
+  cache.families.forEach(f => famMap[f.id] = f.name);
+  const recs = cache.records.filter(r => {
+    const text = [r.tools?.name||'', r.models?.name||'', r.prompt_text||'', r.comment||''].join(' ').toLowerCase();
+    return (!q || text.includes(q)) && (!ft || (r.tools?.name||'') === ft);
+  });
+  document.getElementById('record-count').textContent = recs.length + ' 件' + (q||ft ? '（フィルター中）' : '');
+  const con = document.getElementById('records-container');
+  if (!recs.length) {
+    con.innerHTML = '<div class="empty"><i class="ti ti-inbox"></i><p>記録がありません</p></div>';
+    return;
+  }
+  con.innerHTML = recs.map(r => {
+    const d = new Date(r.created_at);
+    const ds = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    const fam = r.models?.family_id ? (famMap[r.models.family_id] || '') : '';
+    const prompt = r.prompt_text || '';
+    return `<div class="record-card">
+      <div class="record-top">
+        <div>
+          <div class="record-id">${r.record_code || r.id.slice(0,8).toUpperCase()}</div>
+          <div class="record-ts">${ds}</div>
+        </div>
+        <button class="btn btn-sm btn-danger btn-icon" onclick="deleteRecord('${r.id}')" title="削除"><i class="ti ti-trash"></i></button>
+      </div>
+      <div class="record-badges">
+        <span class="badge badge-tool"><i class="ti ti-tools"></i>${r.tools?.name||'—'}</span>
+        <span class="badge badge-model"><i class="ti ti-cpu"></i>${fam ? fam+' / ' : ''}${r.models?.name||'—'}</span>
+        <span class="badge badge-in">入力：${r.input_types?.name||'—'}</span>
+        <span class="badge badge-out">出力：${r.output_types?.name||'—'}</span>
+      </div>
+      <div class="record-prompt">${prompt.length > 180 ? prompt.slice(0,180)+'…' : prompt}</div>
+      <div class="record-footer">
+        ${r.duration_seconds ? `<span class="record-time"><i class="ti ti-clock"></i>${r.duration_seconds} 秒</span>` : ''}
+      </div>
+      ${r.comment ? `<div class="record-comment">${r.comment}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+async function deleteRecord(id) {
+  if (!confirm('この記録を削除しますか？')) return;
+  await sb('verification_records?id=eq.' + id, { method:'DELETE', headers:{...H,'Prefer':'return=minimal'} });
+  await loadAll();
+}
+
+function renderMaster() {
+  renderTags('tools');
+  renderTags('input_types');
+  renderTags('output_types');
+  renderFamilies();
+}
+
+function renderTags(table) {
+  const el = document.getElementById('list-' + table);
+  if (!el) return;
+  const key = table === 'tools' ? 'tools' : table === 'input_types' ? 'inputTypes' : 'outputTypes';
+  const items = cache[key] || [];
+  el.innerHTML = items.length
+    ? items.map(i => `<span class="tag">${i.name}<span class="tag-x" onclick="deleteSimple('${table}','${i.id}')">×</span></span>`).join('')
+    : '<span style="font-size:12px;color:var(--text-muted)">なし</span>';
+}
+
+function renderFamilies() {
+  const el = document.getElementById('family-list');
+  if (!el) return;
+  const famMap = {};
+  cache.families.forEach(f => famMap[f.id] = []);
+  cache.models.forEach(m => { if (famMap[m.family_id]) famMap[m.family_id].push(m); });
+  el.innerHTML = cache.families.map(f => {
+    const models = famMap[f.id] || [];
+    const safeId = f.id.replace(/-/g,'');
+    return `<div class="family-block">
+      <div class="family-head">
+        <div class="family-head-name"><i class="ti ti-folder"></i>${f.name}</div>
+        <button class="btn btn-sm btn-danger" onclick="deleteFamily('${f.id}')"><i class="ti ti-trash"></i> 削除</button>
+      </div>
+      <div class="family-models">
+        <div class="model-chips">${models.length
+          ? models.map(m => `<span class="model-chip">${m.name}<span class="model-chip-x" onclick="deleteModel('${m.id}')">×</span></span>`).join('')
+          : '<span style="font-size:12px;color:var(--text-muted)">モデルなし</span>'
+        }</div>
+        <div class="model-add-row">
+          <input type="text" id="addm-${safeId}" placeholder="モデル名を追加（例：FLUX.1-dev）">
+          <button class="btn btn-primary btn-sm" onclick="addModel('${f.id}','${safeId}')"><i class="ti ti-plus"></i> 追加</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('') || '<div style="font-size:13px;color:var(--text-muted);padding:8px 0">ファミリーがありません</div>';
+}
+
+async function addSimple(table, inputId) {
+  const el = document.getElementById(inputId);
+  const v = el.value.trim(); if (!v) return;
+  await sb(table, { method:'POST', body: JSON.stringify({name:v}) });
+  el.value = ''; await loadAll();
+}
+
+async function deleteSimple(table, id) {
+  if (!confirm('削除しますか？')) return;
+  await sb(table + '?id=eq.' + id, { method:'DELETE', headers:{...H,'Prefer':'return=minimal'} });
+  await loadAll();
+}
+
+async function addFamily() {
+  const el = document.getElementById('new-family');
+  const v = el.value.trim(); if (!v) return;
+  await sb('model_families', { method:'POST', body: JSON.stringify({name:v}) });
+  el.value = ''; await loadAll();
+}
+
+async function deleteFamily(id) {
+  if (!confirm('ファミリーを削除しますか？（配下のモデルも削除されます）')) return;
+  await sb('model_families?id=eq.' + id, { method:'DELETE', headers:{...H,'Prefer':'return=minimal'} });
+  await loadAll();
+}
+
+async function addModel(familyId, safeId) {
+  const el = document.getElementById('addm-' + safeId);
+  const v = el.value.trim(); if (!v) return;
+  await sb('models', { method:'POST', body: JSON.stringify({family_id:familyId, name:v}) });
+  el.value = ''; await loadAll();
+}
+
+async function deleteModel(id) {
+  if (!confirm('モデルを削除しますか？')) return;
+  await sb('models?id=eq.' + id, { method:'DELETE', headers:{...H,'Prefer':'return=minimal'} });
+  await loadAll();
+}
+
+const PAGE_TITLES = { record:'新規記録', list:'記録一覧', master:'マスター管理' };
+function switchTab(name, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+  document.getElementById('page-title').textContent = PAGE_TITLES[name] || '';
+  if (name === 'list') renderList();
+}
+
+loadAll();
+</script>
+</body>
+</html>
